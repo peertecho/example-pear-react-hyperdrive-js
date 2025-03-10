@@ -29,8 +29,8 @@ export async function createDriveWriter ({ name = 'writer' } = {}) {
   const local = new Localdrive('../writer-dir')
   teardown(() => local.close())
 
-  const discovery = swarm.join(drive.discoveryKey)
-  await discovery.flushed()
+  swarm.join(drive.discoveryKey)
+  swarm.flush()
 
   return { drive, local }
 }
@@ -59,8 +59,9 @@ export async function createDriveReader ({ name = 'reader', coreKeyWriter } = {}
 
   drive.core.on('append', mirror)
 
+  const done = drive.findingPeers()
   swarm.join(drive.discoveryKey, { client: true, server: false })
-  swarm.flush()
+  swarm.flush().then(done, done)
 
   mirror()
 }
