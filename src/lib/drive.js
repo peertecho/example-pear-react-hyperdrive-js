@@ -18,13 +18,16 @@ teardown(() => swarm.destroy())
 export async function createDriveWriter ({ name = 'writer' } = {}) {
   console.log('starting writer')
   const store = new Corestore(path.join(Pear.config.storage, name))
+  teardown(() => store.close())
   await store.ready()
   swarm.on('connection', conn => store.replicate(conn))
 
   const drive = new Hyperdrive(store)
+  teardown(() => drive.close())
   await drive.ready()
 
   const local = new Localdrive('../writer-dir')
+  teardown(() => local.close())
 
   const discovery = swarm.join(drive.discoveryKey)
   await discovery.flushed()
@@ -35,13 +38,16 @@ export async function createDriveWriter ({ name = 'writer' } = {}) {
 export async function createDriveReader ({ name = 'reader', coreKeyWriter } = {}) {
   console.log('starting reader', coreKeyWriter)
   const store = new Corestore(path.join(Pear.config.storage, name))
+  teardown(() => store.close())
   await store.ready()
   swarm.on('connection', (conn) => store.replicate(conn))
 
   const drive = new Hyperdrive(store, coreKeyWriter)
+  teardown(() => drive.close())
   await drive.ready()
 
   const local = new Localdrive('../reader-dir')
+  teardown(() => local.close())
 
   async function mirrorDrive () {
     console.log('mirroring down...')
@@ -53,9 +59,8 @@ export async function createDriveReader ({ name = 'reader', coreKeyWriter } = {}
 
   drive.core.on('append', mirror)
 
-  const foundPeers = store.findingPeers()
   swarm.join(drive.discoveryKey, { client: true, server: false })
-  swarm.flush().then(() => foundPeers())
+  swarm.flush()
 
   mirror()
 }
